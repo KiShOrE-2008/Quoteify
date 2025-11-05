@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quoteify – Inspire Every Click</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #1f2937 0%, #0f172a 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .glass-card {
+      background: rgba(40, 48, 60, 0.3);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+    .action-btn {
+      @apply px-4 py-2 rounded-lg font-semibold transition duration-300 ease-in-out shadow-lg;
+    }
+    .primary-btn {
+      @apply action-btn bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800;
+    }
+    .secondary-btn {
+      @apply action-btn bg-gray-700 text-gray-200 hover:bg-gray-600 active:bg-gray-800;
+    }
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+  <!-- Main App -->
+  <div id="app-card" class="glass-card w-full max-w-lg mx-auto p-6 md:p-10 rounded-2xl">
+    
+    <!-- User Info Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 id="user-greeting" class="text-white text-lg font-semibold"></h2>
+      <button id="logout-btn" class="secondary-btn px-3 py-1 text-sm">Logout</button>
+    </div>
+
+    <h1 class="text-3xl font-bold text-white text-center mb-6">Quoteify</h1>
+
+    <!-- Quote Section -->
+    <div class="mb-8 text-center min-h-[120px] flex flex-col justify-center">
+      <p id="quote-text" class="text-xl md:text-2xl text-white italic transition-all duration-500 ease-in-out">
+        "Click 'Inspire Me' to get started on your journey of motivation!"
+      </p>
+      <p id="quote-author" class="text-sm md:text-base text-indigo-400 mt-4 font-medium">
+        — Innovators Hub
+      </p>
+    </div>
+
+    <div id="notification-area" class="h-6 text-center mb-6"></div>
+
+    <!-- Action Buttons -->
+    <div class="grid grid-cols-2 gap-4">
+      <button id="btn-inspire" class="primary-btn">Inspire Me</button>
+      <button id="btn-save" class="secondary-btn">Save</button>
+      <button id="btn-view" class="secondary-btn col-span-2">View Saved Quotes (<span id="saved-count">0</span>)</button>
+      <button id="btn-create" class="secondary-btn col-span-2">Create Custom Quote</button>
+    </div>
+  </div>
+
+  <!-- View Saved Quotes Modal -->
+  <div id="view-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="glass-card w-full max-w-md p-6 rounded-2xl">
+      <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-600 pb-2">Your Saved Quotes</h2>
+      <ul id="saved-quotes-list" class="space-y-4 max-h-72 overflow-y-auto pr-2"></ul>
+      <p id="no-quotes-message" class="text-gray-400 italic mt-4 hidden">You haven't saved any quotes yet!</p>
+      <button id="btn-close-view" class="primary-btn mt-6 w-full">Close</button>
+    </div>
+  </div>
+
+  <!-- Create Custom Quote Modal -->
+  <div id="create-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="glass-card w-full max-w-md p-6 rounded-2xl">
+      <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-600 pb-2">Add Your Own Quote</h2>
+      <div class="space-y-4">
+        <textarea id="custom-quote-text" class="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your inspirational quote here..." rows="4"></textarea>
+        <input type="text" id="custom-quote-author" class="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Author (e.g., You, Unknown)">
+      </div>
+      <div class="flex space-x-4 mt-6">
+        <button id="btn-save-custom" class="primary-btn flex-grow">Save Quote</button>
+        <button id="btn-close-create" class="secondary-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Authentication check
+    const loggedUser = localStorage.getItem('quoteify_logged_in');
+    if (!loggedUser) {
+      window.location.href = 'login.html';
+    }
+
+    // Show user greeting
+    const userGreetingEl = document.getElementById('user-greeting');
+    userGreetingEl.textContent = `👋 Welcome, ${loggedUser}`;
+
+    // Logout handler
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('quoteify_logged_in');
+      window.location.href = 'login.html';
+    });
+
+    // Core app
+    const QUOTES_KEY = 'quoteify_user_quotes';
+    const SAVED_KEY = 'quoteify_saved_quotes';
+    const defaultQuotes = [
+      { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+      { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+      { text: "The mind is everything. What you think you become.", author: "Buddha" },
+      { text: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+      { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+      { text: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" }
+    ];
+
+    let allQuotes = [], savedQuotes = [], currentQuote = null;
+
+    const quoteTextEl = document.getElementById('quote-text');
+    const quoteAuthorEl = document.getElementById('quote-author');
+    const savedCountEl = document.getElementById('saved-count');
+    const notificationAreaEl = document.getElementById('notification-area');
+    const viewModal = document.getElementById('view-modal');
+    const createModal = document.getElementById('create-modal');
+    const savedQuotesListEl = document.getElementById('saved-quotes-list');
+    const noQuotesMessageEl = document.getElementById('no-quotes-message');
+    const customQuoteTextEl = document.getElementById('custom-quote-text');
+    const customQuoteAuthorEl = document.getElementById('custom-quote-author');
+
+    function loadStorage() {
+      const userQuotesString = localStorage.getItem(QUOTES_KEY);
+      const userQuotes = userQuotesString ? JSON.parse(userQuotesString) : [];
+      allQuotes = [...defaultQuotes, ...userQuotes];
+      const savedQuotesString = localStorage.getItem(SAVED_KEY);
+      savedQuotes = savedQuotesString ? JSON.parse(savedQuotesString) : [];
+      updateSavedCount();
+    }
+
+    function saveUserQuotes() {
+      const customQuotes = allQuotes.slice(defaultQuotes.length);
+      localStorage.setItem(QUOTES_KEY, JSON.stringify(customQuotes));
+    }
+
+    function saveLikedQuotes() {
+      localStorage.setItem(SAVED_KEY, JSON.stringify(savedQuotes));
+      updateSavedCount();
+    }
+
+    function showNotification(message, isError = false) {
+      notificationAreaEl.textContent = message;
+      notificationAreaEl.className = `h-6 text-center mb-6 text-sm ${isError ? 'text-red-400' : 'text-green-400'}`;
+      setTimeout(() => {
+        notificationAreaEl.textContent = '';
+        notificationAreaEl.className = 'h-6 text-center mb-6';
+      }, 3000);
+    }
+
+    function updateSavedCount() {
+      savedCountEl.textContent = savedQuotes.length;
+    }
+
+    function displayQuote(quote) {
+      currentQuote = quote;
+      quoteTextEl.style.opacity = 0;
+      quoteAuthorEl.style.opacity = 0;
+      setTimeout(() => {
+        quoteTextEl.textContent = `"${quote.text}"`;
+        quoteAuthorEl.textContent = `— ${quote.author}`;
+        quoteTextEl.style.opacity = 1;
+        quoteAuthorEl.style.opacity = 1;
+      }, 100);
+    }
+
+    function generateNewQuote() {
+      if (allQuotes.length === 0) {
+        displayQuote({ text: "No quotes found! Add a new one.", author: "System" });
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * allQuotes.length);
+      displayQuote(allQuotes[randomIndex]);
+    }
+
+    function handleSaveQuote() {
+      if (!currentQuote || !currentQuote.text) {
+        showNotification("Nothing to save yet!", true);
+        return;
+      }
+      const isDuplicate = savedQuotes.some(q => q.text === currentQuote.text && q.author === currentQuote.author);
+      if (isDuplicate) {
+        showNotification("Already saved!", true);
+      } else {
+        savedQuotes.push(currentQuote);
+        saveLikedQuotes();
+        showNotification("Quote saved!");
+      }
+    }
+
+    function handleSaveCustomQuote() {
+      const text = customQuoteTextEl.value.trim();
+      const author = customQuoteAuthorEl.value.trim() || "Anonymous";
+      if (text.length < 10) {
+        showNotification("Quote too short.", true);
+        return;
+      }
+      const newQuote = { text, author };
+      allQuotes.push(newQuote);
+      saveUserQuotes();
+      customQuoteTextEl.value = '';
+      customQuoteAuthorEl.value = '';
+      closeModal(createModal);
+      showNotification("Your quote was added!");
+      displayQuote(newQuote);
+    }
+
+    function generateSavedList() {
+      savedQuotesListEl.innerHTML = '';
+      if (savedQuotes.length === 0) {
+        noQuotesMessageEl.classList.remove('hidden');
+        return;
+      }
+      noQuotesMessageEl.classList.add('hidden');
+      savedQuotes.forEach((quote, index) => {
+        const item = document.createElement('li');
+        item.className = 'p-3 bg-gray-800 rounded-xl flex justify-between items-start';
+        item.innerHTML = `
+          <div><p class="text-gray-200 italic text-sm">"${quote.text}"</p>
+          <p class="text-indigo-400 text-xs mt-1">— ${quote.author}</p></div>
+          <button class="text-red-400 hover:text-red-500 transition-colors ml-4 text-xs font-semibold" data-index="${index}">Delete</button>`;
+        savedQuotesListEl.appendChild(item);
+      });
+    }
+
+    function handleDeleteQuote(event) {
+      if (event.target.tagName === 'BUTTON') {
+        const index = parseInt(event.target.dataset.index, 10);
+        savedQuotes.splice(index, 1);
+        saveLikedQuotes();
+        generateSavedList();
+        showNotification("Quote deleted.");
+      }
+    }
+
+    function openModal(modal) {
+      modal.classList.remove('hidden');
+      modal.onclick = (e) => { if (e.target === modal) closeModal(modal); };
+    }
+    function closeModal(modal) {
+      modal.classList.add('hidden');
+      modal.onclick = null;
+    }
+
+    window.onload = function() {
+      loadStorage();
+      generateNewQuote();
+      document.getElementById('btn-inspire').onclick = generateNewQuote;
+      document.getElementById('btn-save').onclick = handleSaveQuote;
+      document.getElementById('btn-view').onclick = () => { generateSavedList(); openModal(viewModal); };
+      document.getElementById('btn-close-view').onclick = () => closeModal(viewModal);
+      savedQuotesListEl.onclick = handleDeleteQuote;
+      document.getElementById('btn-create').onclick = () => openModal(createModal);
+      document.getElementById('btn-close-create').onclick = () => closeModal(createModal);
+      document.getElementById('btn-save-custom').onclick = handleSaveCustomQuote;
+    };
+  </script>
+</body>
+</html>
