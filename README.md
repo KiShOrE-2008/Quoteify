@@ -107,6 +107,7 @@ Quoteify/
 2. Open `signup.html` or `login.html` in your browser.  
 3. Create an account and log in.  
 4. Enjoy the app offline — everything works locally!
+5. Link (https://kishore-2008.github.io/Quoteify/login.html)
 
 ---
 
